@@ -1,9 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:school_management/admin_side/components/components.dart';
 import 'package:school_management/admin_side/screens/admin_dashboard.dart';
 import 'package:school_management/admin_side/providers/add_staff_providers.dart';
-import 'package:school_management/admin_side/providers/firebase_auth_notifier.dart'; // Import the providers
+import 'package:school_management/admin_side/features/auth/controller/firebase_auth_notifier.dart';
+import 'package:school_management/staff_side/features/dashboard/model/staff.dart'; // Import the providers
 
 class AddStaff extends ConsumerWidget {
   const AddStaff({super.key});
@@ -30,23 +32,48 @@ class AddStaff extends ConsumerWidget {
     }
   }
 
+  
+
   Future<void> _saveStaffData(BuildContext context, WidgetRef ref) async {
     try {
-      final staffData = {
-        'staffName': ref.read(staffNameControllerProvider).text,
-        'joinDate': ref.read(joinDateControllerProvider).text,
-        'gender': ref.read(genderControllerProvider).text,
-        'textNumber': ref.read(textNumberControllerProvider).text,
-        'whatsapp': ref.read(whatsAppControllerProvider).text,
-        'address': ref.read(addressControllerProvider).text,
-        'id': ref.read(idControllerProvider).text,
-        'password': ref.read(passwordControllerProvider).text,
-        'class': ref.read(classControllerProvider).text,
-        'salary': ref.read(salaryControllerProvider).text,
-        'qualification': ref.read(qualificationControllerProvider).text,
-      }; 
 
-      await ref.read(firebaseAuthNotifierProvider.notifier).storeStaffData(staffData);
+      final staffData = StaffData(
+  adminId: FirebaseAuth.instance.currentUser!.uid,
+  staffName: ref.read(staffNameControllerProvider).text,
+  joinDate: ref.read(joinDateControllerProvider).text,
+  gender: ref.read(genderControllerProvider).text,
+  textNumber: ref.read(textNumberControllerProvider).text,
+  whatsapp: ref.read(whatsAppControllerProvider).text,
+  address: ref.read(addressControllerProvider).text,
+  id: ref.read(idControllerProvider).text,
+  password: ref.read(passwordControllerProvider).text,
+  staffClass: ref.read(classControllerProvider).text,
+  salary: ref.read(salaryControllerProvider).text,
+  qualification: ref.read(qualificationControllerProvider).text,
+);
+
+// Storing staff data in Firestore
+// await _firestore
+//     .collection('staff')
+//     .doc(staffData.id)
+//     .set(staffData.toMap(), SetOptions(merge: true));
+
+      // final staffData = {
+      //   'adminId':FirebaseAuth.instance.currentUser!.uid,
+      //   'staffName': ref.read(staffNameControllerProvider).text,
+      //   'joinDate': ref.read(joinDateControllerProvider).text,
+      //   'gender': ref.read(genderControllerProvider).text,
+      //   'textNumber': ref.read(textNumberControllerProvider).text,
+      //   'whatsapp': ref.read(whatsAppControllerProvider).text,
+      //   'address': ref.read(addressControllerProvider).text,
+      //   'id': ref.read(idControllerProvider).text,
+      //   'password': ref.read(passwordControllerProvider).text,
+      //   'class': ref.read(classControllerProvider).text,
+      //   'salary': ref.read(salaryControllerProvider).text,
+      //   'qualification': ref.read(qualificationControllerProvider).text,
+      // }; 
+
+      await ref.read(firebaseAuthNotifierProvider.notifier).storeStaffData(staffData.toMap());
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Staff data saved successfully!')),
       );

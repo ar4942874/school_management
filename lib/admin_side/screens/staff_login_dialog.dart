@@ -1,63 +1,90 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:school_management/models/app_user.dart';
-import 'package:school_management/models/staff.dart';
-import 'package:school_management/admin_side/providers/firebase_auth_notifier.dart';
-import 'package:school_management/staff_side/screens/staff_dashboard.dart'; // Ensure this import is correct
+import 'package:school_management/admin_side/features/auth/controller/auth_controller.dart';
+import 'package:school_management/admin_side/features/auth/model/app_user.dart';
 
-class StaffLoginDialog extends ConsumerWidget {
+class StaffLoginDialog extends StatefulWidget {
   const StaffLoginDialog({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final idController = TextEditingController();
-    final passwordController = TextEditingController();
+  _StaffLoginDialogState createState() => _StaffLoginDialogState();
+}
 
-    return AlertDialog(
-      title: const Text('Staff Login'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: idController,
-            decoration: const InputDecoration(labelText: 'Staff ID'),
+class _StaffLoginDialogState extends State<StaffLoginDialog> {
+  final TextEditingController idController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool isLoading = false;
+
+  @override
+  void dispose() {
+    idController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) { // Use Consumer to get ref
+        return AlertDialog(
+          title: const Text('Staff Login'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: idController,
+                decoration: const InputDecoration(labelText: 'Staff ID'),
+              ),
+              TextField(
+                controller: passwordController,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
+              ),
+              if (isLoading) // Show loading indicator if login is in progress
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: CircularProgressIndicator(),
+                ),
+            ],
           ),
-          TextField(
-            controller: passwordController,
-            decoration: const InputDecoration(labelText: 'Password'),
-            obscureText: true,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop(); // Close the dialog
-          },
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () async {
-            final staffId = idController.text;
-            final password = passwordController.text;
-
-            final authNotifier =
-                ref.read(firebaseAuthNotifierProvider.notifier);
-            AppUser? staff =
-                await authNotifier.staffSignIn(id: staffId, password: password);
-
-            if (staff != null) {
-              Navigator.of(context).pop(); // Close the dialog
-              Navigator.of(context).pushReplacementNamed(
-                  StaffDashboard.pageName); // Navigate to Staff Dashboard
-            } else {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('Login failed')));
-            }
-          },
-          child: const Text('Login'),
-        ),
-      ],
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: isLoading ? null : () => _login(context, ref), // Pass ref to _login
+              child: const Text('Login'),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  Future<void> _login(BuildContext context, WidgetRef ref) async {
+    final staffId = idController.text;
+    final password = passwordController.text;
+
+    if (staffId.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    setState(() {
+      isLoading = true; // Set loading to true
+    });
+
+    final authController = ref.read(authControllerProvider); // Use ref.read to access providers
+    AppUser? staff =
+        await authController.loginAsStaff(id: staffId, password: password);
+        Navigator.of(context).pop();
+
+    setState(() {
+      isLoading = false; // Set loading to false after login
+    });
   }
 }

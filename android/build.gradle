@@ -1,3 +1,16 @@
+// Add the buildscript block at the top with the updated Kotlin version
+buildscript {
+    ext.kotlin_version = '1.9.10' // Update to a stable version like 1.8.10
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        // Other classpath dependencies if needed
+    }
+}
+
 allprojects {
     repositories {
         google()

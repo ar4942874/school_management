@@ -1,13 +1,18 @@
+import 'dart:io';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:school_management/admin_side/screens/add_staff.dart';
 import 'package:school_management/admin_side/screens/add_student.dart';
-import 'package:school_management/admin_side/providers/firebase_auth_notifier.dart';
+import 'package:school_management/admin_side/features/auth/controller/firebase_auth_notifier.dart';
+import 'package:school_management/models/student.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 final isTappedProvider = StateProvider<bool>((ref) => false);
 
@@ -28,6 +33,21 @@ final staffCountProvider = StreamProvider<int>((ref) {
   }
 });
 
+final studentsCountProvider = FutureProvider<int>((ref) async {
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  try {
+    // Fetch all documents from the flat 'students' collection
+    final studentsSnapshot = await firestore.collection('students').get();
+
+    // The total count of students is simply the number of documents
+    return studentsSnapshot.docs.length;
+  } catch (e) {
+    // Log or handle the error
+    rethrow; // Propagate the error to the UI or caller
+  }
+});
+
 class OverviewSection extends ConsumerWidget {
   const OverviewSection({
     super.key,
@@ -40,13 +60,19 @@ class OverviewSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final noOfStudents = ref.watch(studentsCountProvider);
     final staffCountAsyncValue = ref.watch(staffCountProvider);
 
     return Column(
       children: [
         _buildHeader('Overview', 'Active'),
-        _buildOverviewRow(Icons.people, 'Students', '0'),
-        _buildOverviewRow(Icons.flag, 'Classes', '10'),
+        noOfStudents.when(
+          data: (data) =>
+              _buildOverviewRow(Icons.people, 'Students', data.toString()),
+          error: (error, stackTrace) =>
+              _buildOverviewRow(Icons.people, 'Students', error.toString()),
+          loading: () => _buildOverviewRow(Icons.people, 'Students', 'loading'),
+        ),
         staffCountAsyncValue.when(
           data: (staffCount) => _buildOverviewRow(
               FontAwesomeIcons.peopleGroup, 'Staff', staffCount.toString()),
@@ -123,85 +149,188 @@ class OverviewSection extends ConsumerWidget {
   }
 }
 
-class AttendanceSection extends StatelessWidget {
+class AttendanceSection extends StatefulWidget {
+  final double maxHeight;
+  final double maxWidth;
+
   const AttendanceSection({
     super.key,
     required this.maxHeight,
     required this.maxWidth,
   });
 
-  final double maxHeight;
-  final double maxWidth;
+  @override
+  _AttendanceSectionState createState() => _AttendanceSectionState();
+}
+
+class _AttendanceSectionState extends State<AttendanceSection> {
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  DateTime selectedDate = DateTime.now();
+  bool isLoading = false;
+  int totalPresent = 0;
+  int totalAbsent = 0;
+
+  // Fetch attendance data for all students across classes on the selected date
+  Future<void> fetchAttendance(DateTime date) async {
+    setState(() {
+      isLoading = true;
+      totalPresent = 0;
+      totalAbsent = 0;
+    });
+
+    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+
+    try {
+      // Query attendance records for the selected date
+      final attendanceSnapshot = await firestore
+          .collection('attendance')
+          .where('date', isEqualTo: formattedDate)
+          .get();
+
+      // Count present and absent statuses
+      for (var doc in attendanceSnapshot.docs) {
+        final attendanceData = doc.data();
+        if (attendanceData['isPresent'] == true) {
+          totalPresent++;
+        } else {
+          totalAbsent++;
+        }
+      }
+    } catch (e) {
+      print('Error fetching attendance: $e');
+    }
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  // Open the date picker
+  Future<void> selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+      fetchAttendance(selectedDate);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAttendance(
+        selectedDate); // Fetch attendance for the current date initially
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Define your attendance data as a list of BarChartGroupData
-    List<BarChartGroupData> attendanceData = [
-      BarChartGroupData(x: 1, barRods: [
-        BarChartRodData(
-          toY: 10,
-          color: Colors.blue,
-          width: 15,
-        ),
-      ]),
-      BarChartGroupData(x: 2, barRods: [
-        BarChartRodData(
-          toY: 20,
-          color: Colors.blue,
-          width: 15,
-        ),
-      ]),
-      BarChartGroupData(x: 3, barRods: [
-        BarChartRodData(
-          toY: 15,
-          color: Colors.blue,
-          width: 15,
-        ),
-      ]),
-      BarChartGroupData(x: 4, barRods: [
-        BarChartRodData(
-          toY: 25,
-          color: Colors.blue,
-          width: 15,
-        ),
-      ]),
-      BarChartGroupData(x: 5, barRods: [
-        BarChartRodData(
-          toY: 30,
-          color: Colors.blue,
-          width: 15,
-        ),
-      ]),
-    ];
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.3),
         borderRadius: BorderRadius.circular(10),
       ),
-      width: maxWidth,
-      height: maxHeight,
+      width: widget.maxWidth,
+      height: widget.maxHeight,
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              'Attendance Summary',
-              style: TextStyle(fontWeight: FontWeight.bold),
+          // Title and Date Picker
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Attendance Summary',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => selectDate(context),
+                  icon: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(DateFormat('MMM dd, yyyy').format(selectedDate)),
+                ),
+              ],
             ),
           ),
+
+          // Bar Chart
           Expanded(
-            child: BarChart(
-              BarChartData(
-                gridData: const FlGridData(show: true),
-                titlesData: const FlTitlesData(show: true),
-                borderData: FlBorderData(show: true),
-                barGroups: attendanceData,
-                minY: 0,
-                maxY: 30, // Adjust this value as needed
-              ),
-            ),
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : BarChart(
+                    BarChartData(
+                      gridData: const FlGridData(show: false),
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              switch (value.toInt()) {
+                                case 1:
+                                  return const Text('Present');
+                                case 2:
+                                  return const Text('Absent');
+                                default:
+                                  return const Text('');
+                              }
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              return Text(value.toInt().toString());
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(),
+                        rightTitles: const AxisTitles(),
+                      ),
+                      borderData: FlBorderData(
+                        show: true,
+                        border: Border.all(color: Colors.grey, width: 1),
+                      ),
+                      barGroups: [
+                        BarChartGroupData(
+                          x: 1,
+                          barRods: [
+                            BarChartRodData(
+                              toY: totalPresent.toDouble(),
+                              color: Colors.green,
+                              width: 10,
+                            ),
+                          ],
+                        ),
+                        BarChartGroupData(
+                          x: 2,
+                          barRods: [
+                            BarChartRodData(
+                              toY: totalAbsent.toDouble(),
+                              color: Colors.red,
+                              width: 10,
+                            ),
+                          ],
+                        ),
+                      ],
+                      minY: 0,
+                      maxY: (totalPresent + totalAbsent).toDouble(),
+                    ),
+                  ),
+          ),
+
+          // Summary
+          const SizedBox(height: 16),
+          Text(
+            'Total Students: ${totalPresent + totalAbsent}',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -249,7 +378,6 @@ class CustomFloatingActionButton extends ConsumerWidget {
           _buildFabItem('Add Staff', Icons.person_add_alt_1, () {
             Navigator.of(ref.context).pushNamed(AddStaff.pageName);
           }),
-          _buildFabItem('Add Class', Icons.people_alt, () {}),
           _buildFabItem('Close', Icons.close,
               () => ref.read(isTappedProvider.notifier).state = false,
               color: Colors.red),
@@ -709,345 +837,406 @@ class InstituteInfo extends StatelessWidget {
   }
 }
 
-// class AddStudentView extends ConsumerWidget {
-//   const AddStudentView({
-//     super.key,
-//     required this.maxWidth,
-//     required this.maxHeight,
-//   });
-
-//   final double maxWidth;
-//   final double maxHeight;
-
-//   @override
-//   Widget build(BuildContext context, WidgetRef ref) {
-//     final studentNameController = ref.watch(studentNameControllerProvider);
-//     final fatherNameController = ref.watch(fatherNameControllerProvider);
-//     final fatherPhoneController = ref.watch(fatherPhoneControllerProvider);
-//     final motherNameController = ref.watch(motherNameControllerProvider);
-//     final genderController = ref.watch(genderControllerProvider);
-//     final cnicController = ref.watch(cnicControllerProvider);
-//     final rollNoController = ref.watch(rollNoControllerProvider);
-//     final addressController = ref.watch(addressControllerProvider);
-//     final selectedDate = ref.watch(selectedDateProvider);
-
-//     return Form(
-//       child: Column(
-//         mainAxisAlignment: MainAxisAlignment.center,
-//         children: [
-//           Container(
-//             width: maxWidth * 0.3,
-//             height: maxHeight * 0.2,
-//             decoration: const BoxDecoration(
-//               shape: BoxShape.circle,
-//               color: Colors.amber,
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: studentNameController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter Student Name'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the student name';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: rollNoController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter Roll No'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the roll number';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: GestureDetector(
-//               onTap: () async {
-//                 DateTime? pickedDate = await showDatePicker(
-//                   context: context,
-//                   initialDate: selectedDate ?? DateTime.now(),
-//                   firstDate: DateTime(2000),
-//                   lastDate: DateTime.now(),
-//                 );
-//                 if (pickedDate != null) {
-//                   ref.read(selectedDateProvider.notifier).state = pickedDate;
-//                 }
-//               },
-//               child: InputDecorator(
-//                 decoration: const InputDecoration(
-//                   labelText: 'Select Date of Birth',
-//                   border: OutlineInputBorder(),
-//                 ),
-//                 child: Text(
-//                   selectedDate != null
-//                       ? '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'
-//                       : 'No date selected',
-//                   style: const TextStyle(fontSize: 16),
-//                 ),
-//               ),
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: fatherNameController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter Father Name'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the father\'s name';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: fatherPhoneController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter Father Phone Number'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               keyboardType: TextInputType.phone,
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the father\'s phone number';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: motherNameController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter Mother Name'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the mother\'s name';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: genderController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter Gender'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the gender';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: cnicController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter CNIC'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the CNIC';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           SizedBox(
-//             width: maxWidth,
-//             child: TextFormField(
-//               controller: addressController,
-//               decoration: const InputDecoration(
-//                 label: Text('Enter Address'),
-//                 border: OutlineInputBorder(),
-//               ),
-//               validator: (value) {
-//                 if (value == null || value.isEmpty) {
-//                   return 'Please enter the address';
-//                 }
-//                 return null;
-//               },
-//             ),
-//           ),
-//           const SizedBox(height: 20),
-//           ElevatedButton(
-//             onPressed: () {
-//               // Add your form submission logic here
-//             },
-//             child: const Text('Submit'),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-class AddStudentView extends ConsumerWidget {
-  const AddStudentView({
-    super.key,
-    required this.maxWidth,
-    required this.maxHeight,
-  });
-
+class AddStudentView extends StatelessWidget {
   final double maxWidth;
   final double maxHeight;
+  final String className;
+
+  const AddStudentView(
+      {super.key,
+      required this.maxWidth,
+      required this.maxHeight,
+      required this.className});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Retrieve controllers and selected date from providers
-    final studentNameController = ref.watch(studentNameControllerProvider);
-    final fatherNameController = ref.watch(fatherNameControllerProvider);
-    final fatherPhoneController = ref.watch(fatherPhoneControllerProvider);
-    final motherNameController = ref.watch(motherNameControllerProvider);
-    final genderController = ref.watch(genderControllerProvider);
-    final cnicController = ref.watch(cnicControllerProvider);
-    final rollNoController = ref.watch(rollNoControllerProvider);
-    final addressController = ref.watch(addressControllerProvider);
-    final selectedDate = ref.watch(selectedDateProvider);
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Form(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "Add Student",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            buildTextFormField(studentNameController, 'Enter Student Name'),
-            const SizedBox(height: 16),
-            buildTextFormField(rollNoController, 'Enter Roll Number'),
-            const SizedBox(height: 16),
-            buildDatePicker(context, ref, selectedDate),
-            const SizedBox(height: 16),
-            buildTextFormField(fatherNameController, 'Enter Father\'s Name'),
-            const SizedBox(height: 16),
-            buildTextFormField(
-                fatherPhoneController, 'Enter Father\'s Phone Number'),
-            const SizedBox(height: 16),
-            buildTextFormField(motherNameController, 'Enter Mother\'s Name'),
-            const SizedBox(height: 16),
-            buildTextFormField(genderController, 'Enter Gender'),
-            const SizedBox(height: 16),
-            buildTextFormField(cnicController, 'Enter CNIC Number'),
-            const SizedBox(height: 16),
-            buildTextFormField(addressController, 'Enter Address'),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                // Collect data and call the storeStudentData method
-                final studentData = {
-                  'name': studentNameController.text,
-                  'rollNo': rollNoController.text,
-                  'dateOfBirth': selectedDate?.toIso8601String(),
-                  'fatherName': fatherNameController.text,
-                  'fatherPhone': fatherPhoneController.text,
-                  'motherName': motherNameController.text,
-                  'gender': genderController.text,
-                  'cnic': cnicController.text,
-                  'address': addressController.text,
-                  'createdAt': DateTime.now().toIso8601String(),
-                };
-
-                var success = ref
-                    .read(firebaseAuthNotifierProvider.notifier)
-                    .storeStudentData(studentData);
-                // if(success){}
-              },
-              child: const Text('Submit'),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        title: const Text('Add Student'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: AddStudentForm(
+            className: className,
+          ),
         ),
       ),
     );
   }
+}
 
-  // Function to build text form fields
-  Widget buildTextFormField(
-      TextEditingController controller, String labelText) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: labelText,
-        border: const OutlineInputBorder(),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter $labelText';
-        }
+class AddStudentForm extends StatefulWidget {
+  const AddStudentForm({super.key, required this.className});
+  final String className;
+
+  @override
+  _AddStudentFormState createState() => _AddStudentFormState();
+}
+
+class _AddStudentFormState extends State<AddStudentForm> {
+  final _formKey = GlobalKey<FormState>();
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+  bool _isUploading = false;
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
+
+//updating image to supabase
+  Future<String?> _uploadImageToSupabase(File imageFile) async {
+    try {
+      final supabaseClient = Supabase.instance.client;
+
+      // Define a unique file path in Supabase storage
+      String filePath = 'students/${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      // Perform the upload and expect a String response
+      final response = await supabaseClient.storage
+          .from('student_images') // Make sure this bucket exists in Supabase
+          .uploadBinary(filePath, await imageFile.readAsBytes());
+      // Assuming response is the file path on successful upload
+      if (response.contains('error')) {
+        print('Error uploading to Supabase: $response');
         return null;
+      }
+
+      // Generate the public URL of the uploaded image if successful
+      final imageUrl = supabaseClient.storage
+          .from('student_images')
+          //i made change here removed data
+          .getPublicUrl(filePath);
+
+      return imageUrl;
+    } catch (e) {
+      print('Exception during upload: $e');
+      return null;
+    }
+  }
+
+  Future<void> _submitForm(
+    TextEditingController studentNameController,
+    TextEditingController rollNoController,
+    TextEditingController addressController,
+    TextEditingController classNameController,
+    TextEditingController fatherNameController,
+    TextEditingController fatherPhoneController,
+    TextEditingController motherNameController,
+    TextEditingController genderController,
+    TextEditingController cnicController,
+    DateTime? selectedDate,
+    WidgetRef ref,
+  ) async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isUploading = true;
+      });
+
+      // Upload image to Supabase
+      String? imageURL;
+      if (_selectedImage != null) {
+        imageURL = await _uploadImageToSupabase(_selectedImage!);
+      }
+
+      // Prepare student data
+      Student student = Student(
+        name: studentNameController.text,
+        address: addressController.text,
+        className: classNameController.text,
+        cnic: cnicController.text,
+        createdAt: DateTime.now().toString(),
+        dateOfBirth: selectedDate?.toIso8601String(),
+        fatherName: fatherNameController.text,
+        fatherPhone: fatherPhoneController.text,
+        gender: genderController.text,
+        motherName: motherNameController.text,
+        studentPic: imageURL,
+        rollNo: rollNoController.text,
+      );
+
+      // Store student data in Firestore
+      await ref
+          .read(firebaseAuthNotifierProvider.notifier)
+          .storeStudentData(student.toMap());
+      setState(() {
+        _isUploading = false;
+      });
+
+      // Reset the form after submission
+      _resetForm(
+      studentNameController,
+      rollNoController,
+      addressController,
+      classNameController,
+      fatherNameController,
+      fatherPhoneController,
+      motherNameController,
+      genderController,
+      cnicController,
+      ref,
+    );
+       
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Student added successfully!'),
+        ),
+      );
+    }
+  }
+
+ void _resetForm(
+  TextEditingController studentNameController,
+  TextEditingController rollNoController,
+  TextEditingController addressController,
+  TextEditingController classNameController,
+  TextEditingController fatherNameController,
+  TextEditingController fatherPhoneController,
+  TextEditingController motherNameController,
+  TextEditingController genderController,
+  TextEditingController cnicController,
+  WidgetRef ref,
+) {
+  // Clear all controllers
+  studentNameController.clear();
+  rollNoController.clear();
+  addressController.clear();
+  classNameController.clear();
+  fatherNameController.clear();
+  fatherPhoneController.clear();
+  motherNameController.clear();
+  genderController.clear();
+  cnicController.clear();
+
+  // Reset any other state
+  _selectedImage = null; // Clear selected image
+  ref.read(selectedDateProvider.notifier).state = null; // Reset selected date
+}
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final studentNameController = ref.watch(studentNameControllerProvider);
+        final rollNoController = ref.watch(rollNoControllerProvider);
+        final addressController = ref.watch(addressControllerProvider);
+        final classNameController = ref.watch(classNameProvider);
+        final fatherNameController = ref.watch(fatherNameControllerProvider);
+        final fatherPhoneController = ref.watch(fatherPhoneControllerProvider);
+        final motherNameController = ref.watch(motherNameControllerProvider);
+        final genderController = ref.watch(genderControllerProvider);
+        final cnicController = ref.watch(cnicControllerProvider);
+        final selectedDate = ref.watch(selectedDateProvider);
+
+        if (widget.className.isNotEmpty) {
+          classNameController.text = widget.className;
+        }
+        return Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundImage: _selectedImage != null
+                        ? FileImage(_selectedImage!)
+                        : null,
+                    child: _selectedImage == null
+                        ? const Icon(Icons.camera_alt, size: 40)
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildTextFormField(
+                controller: studentNameController,
+                labelText: 'Enter Student Name',
+                validator: (value) =>
+                    _validateRequiredField(value, "student's name"),
+              ),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: rollNoController,
+                labelText: 'Enter Roll Number',
+                validator: (value) =>
+                    _validateRequiredField(value, 'roll number'),
+              ),
+              const SizedBox(height: 16),
+              _buildDatePicker(context, ref, selectedDate),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: classNameController,
+                labelText: "Class",
+                enabled: widget.className.isEmpty,
+                validator: (value) =>
+                    _validateRequiredField(value, 'class name'),
+              ),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: fatherNameController,
+                labelText: "Enter Father's Name",
+                validator: (value) =>
+                    _validateRequiredField(value, "father's name"),
+              ),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: fatherPhoneController,
+                labelText: "Enter Father's Phone Number",
+                keyboardType: TextInputType.phone,
+                validator: (value) => _validatePhone(value),
+              ),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: motherNameController,
+                labelText: "Enter Mother's Name",
+                validator: (value) =>
+                    _validateRequiredField(value, "mother's name"),
+              ),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: genderController,
+                labelText: 'Enter Gender',
+                validator: (value) => _validateRequiredField(value, 'gender'),
+              ),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: cnicController,
+                labelText: 'Enter CNIC Number',
+                keyboardType: TextInputType.number,
+                validator: (value) => _validateCNIC(value),
+              ),
+              const SizedBox(height: 16),
+              _buildTextFormField(
+                controller: addressController,
+                labelText: 'Enter Address',
+                validator: (value) => _validateRequiredField(value, 'address'),
+              ),
+              const SizedBox(height: 24),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                  onPressed: _isUploading
+                      ? null
+                      : () => _submitForm(
+                          studentNameController,
+                          rollNoController,
+                          addressController,
+                          classNameController,
+                          fatherNameController,
+                          fatherPhoneController,
+                          motherNameController,
+                          genderController,
+                          cnicController,
+                          selectedDate,
+                          ref),
+                  child: _isUploading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Submit',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
 
-  // Function to build date picker
-  Widget buildDatePicker(
-      BuildContext context, WidgetRef ref, DateTime? selectedDate) {
-    return InkWell(
-      onTap: () async {
-        final DateTime? pickedDate = await showDatePicker(
-          context: context,
-          initialDate: selectedDate ?? DateTime.now(),
-          firstDate: DateTime(2000),
-          lastDate: DateTime(2101),
-        );
-        if (pickedDate != null) {
-          ref.read(selectedDateProvider.notifier).state = pickedDate;
-        }
-      },
-      child: InputDecorator(
-        decoration: const InputDecoration(
-          labelText: 'Select Date of Birth',
-          border: OutlineInputBorder(),
-        ),
-        child: Text(
-          selectedDate != null
-              ? DateFormat('yyyy-MM-dd').format(selectedDate)
-              : 'Please select a date',
-          style: const TextStyle(fontSize: 16),
+  // Additional helper methods here (e.g., _buildTextFormField, _buildDatePicker, validation)
+}
+
+Widget _buildTextFormField({
+  required TextEditingController controller,
+  required String labelText,
+  bool enabled = true,
+  TextInputType keyboardType = TextInputType.text,
+  required String? Function(String?) validator,
+}) {
+  return TextFormField(
+    controller: controller,
+    decoration: InputDecoration(
+      labelText: labelText,
+      enabled: enabled,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+    ),
+    validator: validator,
+    keyboardType: keyboardType,
+  );
+}
+
+Widget _buildDatePicker(
+    BuildContext context, WidgetRef ref, DateTime? selectedDate) {
+  return GestureDetector(
+    onTap: () async {
+      final DateTime? pickedDate = await showDatePicker(
+        context: context,
+        initialDate: selectedDate ?? DateTime.now(),
+        firstDate: DateTime(1990),
+        lastDate: DateTime.now(),
+      );
+      if (pickedDate != null) {
+        ref.read(selectedDateProvider.notifier).state = pickedDate;
+      }
+    },
+    child: InputDecorator(
+      decoration: InputDecoration(
+        labelText: 'Select Date of Birth',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
       ),
-    );
+      child: Text(
+        selectedDate != null
+            ? DateFormat('yyyy-MM-dd').format(selectedDate)
+            : 'Please select a date',
+        style: const TextStyle(fontSize: 16),
+      ),
+    ),
+  );
+}
+
+// Validation functions
+String? _validateRequiredField(String? value, String fieldName) {
+  return (value == null || value.isEmpty)
+      ? 'Please enter the $fieldName'
+      : null;
+}
+
+String? _validatePhone(String? value) {
+  if (value == null || value.isEmpty) {
+    return 'Please enter the father\'s phone number';
+  } else if (!RegExp(r'^\d{11}$').hasMatch(value)) {
+    return 'Please enter a valid phone number';
   }
+  return null;
+}
+
+String? _validateCNIC(String? value) {
+  if (value == null || value.isEmpty) {
+    return 'Please enter the CNIC number';
+  } else if (!RegExp(r'^\d{13}$').hasMatch(value)) {
+    return 'Please enter a valid CNIC number without dashes';
+  }
+  return null;
 }
