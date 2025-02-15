@@ -1,18 +1,14 @@
-import 'dart:io';
-
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:image_picker/image_picker.dart';
+
 import 'package:intl/intl.dart';
 import 'package:school_management/admin_side/screens/add_staff.dart';
-import 'package:school_management/admin_side/screens/add_student.dart';
+
 import 'package:school_management/admin_side/features/auth/controller/firebase_auth_notifier.dart';
-import 'package:school_management/models/student.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 final isTappedProvider = StateProvider<bool>((ref) => false);
 
@@ -373,7 +369,7 @@ class CustomFloatingActionButton extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildFabItem('Add Student', Icons.person_add_alt_1, () {
-            Navigator.of(ref.context).pushNamed(AddStudent.pageName);
+            // Navigator.of(ref.context).pushNamed(AddStudent.pageName);
           }),
           _buildFabItem('Add Staff', Icons.person_add_alt_1, () {
             Navigator.of(ref.context).pushNamed(AddStaff.pageName);
@@ -837,406 +833,406 @@ class InstituteInfo extends StatelessWidget {
   }
 }
 
-class AddStudentView extends StatelessWidget {
-  final double maxWidth;
-  final double maxHeight;
-  final String className;
+// class AddStudentView extends StatelessWidget {
+//   final double maxWidth;
+//   final double maxHeight;
+//   final String className;
 
-  const AddStudentView(
-      {super.key,
-      required this.maxWidth,
-      required this.maxHeight,
-      required this.className});
+//   const AddStudentView(
+//       {super.key,
+//       required this.maxWidth,
+//       required this.maxHeight,
+//       required this.className});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        title: const Text('Add Student'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: AddStudentForm(
-            className: className,
-          ),
-        ),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       resizeToAvoidBottomInset: true,
+//       appBar: AppBar(
+//         title: const Text('Add Student'),
+//       ),
+//       body: Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: SingleChildScrollView(
+//           child: AddStudentForm(
+//             className: className,
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
 
-class AddStudentForm extends StatefulWidget {
-  const AddStudentForm({super.key, required this.className});
-  final String className;
+// class AddStudentForm extends StatefulWidget {
+//   const AddStudentForm({super.key, required this.className});
+//   final String className;
 
-  @override
-  _AddStudentFormState createState() => _AddStudentFormState();
-}
+//   @override
+//   _AddStudentFormState createState() => _AddStudentFormState();
+// }
 
-class _AddStudentFormState extends State<AddStudentForm> {
-  final _formKey = GlobalKey<FormState>();
-  File? _selectedImage;
-  final ImagePicker _picker = ImagePicker();
-  bool _isUploading = false;
+// class _AddStudentFormState extends State<AddStudentForm> {
+//   final _formKey = GlobalKey<FormState>();
+//   File? _selectedImage;
+//   final ImagePicker _picker = ImagePicker();
+//   bool _isUploading = false;
 
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
-  }
+//   Future<void> _pickImage() async {
+//     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+//     if (pickedFile != null) {
+//       setState(() {
+//         _selectedImage = File(pickedFile.path);
+//       });
+//     }
+//   }
 
-//updating image to supabase
-  Future<String?> _uploadImageToSupabase(File imageFile) async {
-    try {
-      final supabaseClient = Supabase.instance.client;
+// //updating image to supabase
+//   Future<String?> _uploadImageToSupabase(File imageFile) async {
+//     try {
+//       final supabaseClient = Supabase.instance.client;
 
-      // Define a unique file path in Supabase storage
-      String filePath = 'students/${DateTime.now().millisecondsSinceEpoch}.jpg';
+//       // Define a unique file path in Supabase storage
+//       String filePath = 'students/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // Perform the upload and expect a String response
-      final response = await supabaseClient.storage
-          .from('student_images') // Make sure this bucket exists in Supabase
-          .uploadBinary(filePath, await imageFile.readAsBytes());
-      // Assuming response is the file path on successful upload
-      if (response.contains('error')) {
-        print('Error uploading to Supabase: $response');
-        return null;
-      }
+//       // Perform the upload and expect a String response
+//       final response = await supabaseClient.storage
+//           .from('student_images') // Make sure this bucket exists in Supabase
+//           .uploadBinary(filePath, await imageFile.readAsBytes());
+//       // Assuming response is the file path on successful upload
+//       if (response.contains('error')) {
+//         print('Error uploading to Supabase: $response');
+//         return null;
+//       }
 
-      // Generate the public URL of the uploaded image if successful
-      final imageUrl = supabaseClient.storage
-          .from('student_images')
-          //i made change here removed data
-          .getPublicUrl(filePath);
+//       // Generate the public URL of the uploaded image if successful
+//       final imageUrl = supabaseClient.storage
+//           .from('student_images')
+//           //i made change here removed data
+//           .getPublicUrl(filePath);
 
-      return imageUrl;
-    } catch (e) {
-      print('Exception during upload: $e');
-      return null;
-    }
-  }
+//       return imageUrl;
+//     } catch (e) {
+//       print('Exception during upload: $e');
+//       return null;
+//     }
+//   }
 
-  Future<void> _submitForm(
-    TextEditingController studentNameController,
-    TextEditingController rollNoController,
-    TextEditingController addressController,
-    TextEditingController classNameController,
-    TextEditingController fatherNameController,
-    TextEditingController fatherPhoneController,
-    TextEditingController motherNameController,
-    TextEditingController genderController,
-    TextEditingController cnicController,
-    DateTime? selectedDate,
-    WidgetRef ref,
-  ) async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isUploading = true;
-      });
+//   Future<void> _submitForm(
+//     TextEditingController studentNameController,
+//     TextEditingController rollNoController,
+//     TextEditingController addressController,
+//     TextEditingController classNameController,
+//     TextEditingController fatherNameController,
+//     TextEditingController fatherPhoneController,
+//     TextEditingController motherNameController,
+//     TextEditingController genderController,
+//     TextEditingController cnicController,
+//     DateTime? selectedDate,
+//     WidgetRef ref,
+//   ) async {
+//     if (_formKey.currentState!.validate()) {
+//       setState(() {
+//         _isUploading = true;
+//       });
 
-      // Upload image to Supabase
-      String? imageURL;
-      if (_selectedImage != null) {
-        imageURL = await _uploadImageToSupabase(_selectedImage!);
-      }
+//       // Upload image to Supabase
+//       String? imageURL;
+//       if (_selectedImage != null) {
+//         imageURL = await _uploadImageToSupabase(_selectedImage!);
+//       }
 
-      // Prepare student data
-      Student student = Student(
-        name: studentNameController.text,
-        address: addressController.text,
-        className: classNameController.text,
-        cnic: cnicController.text,
-        createdAt: DateTime.now().toString(),
-        dateOfBirth: selectedDate?.toIso8601String(),
-        fatherName: fatherNameController.text,
-        fatherPhone: fatherPhoneController.text,
-        gender: genderController.text,
-        motherName: motherNameController.text,
-        studentPic: imageURL,
-        rollNo: rollNoController.text,
-      );
+//       // Prepare student data
+//       Student student = Student(
+//         name: studentNameController.text,
+//         address: addressController.text,
+//         className: classNameController.text,
+//         cnic: cnicController.text,
+//         createdAt: DateTime.now().toString(),
+//         dateOfBirth: selectedDate?.toIso8601String(),
+//         fatherName: fatherNameController.text,
+//         fatherPhone: fatherPhoneController.text,
+//         gender: genderController.text,
+//         motherName: motherNameController.text,
+//         studentPic: imageURL,
+//         rollNo: rollNoController.text,
+//       );
 
-      // Store student data in Firestore
-      await ref
-          .read(firebaseAuthNotifierProvider.notifier)
-          .storeStudentData(student.toMap());
-      setState(() {
-        _isUploading = false;
-      });
+//       // Store student data in Firestore
+//       await ref
+//           .read(firebaseAuthNotifierProvider.notifier)
+//           .storeStudentData(student.toMap());
+//       setState(() {
+//         _isUploading = false;
+//       });
 
-      // Reset the form after submission
-      _resetForm(
-      studentNameController,
-      rollNoController,
-      addressController,
-      classNameController,
-      fatherNameController,
-      fatherPhoneController,
-      motherNameController,
-      genderController,
-      cnicController,
-      ref,
-    );
+//       // Reset the form after submission
+//       _resetForm(
+//       studentNameController,
+//       rollNoController,
+//       addressController,
+//       classNameController,
+//       fatherNameController,
+//       fatherPhoneController,
+//       motherNameController,
+//       genderController,
+//       cnicController,
+//       ref,
+//     );
        
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Student added successfully!'),
-        ),
-      );
-    }
-  }
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text('Student added successfully!'),
+//         ),
+//       );
+//     }
+//   }
 
- void _resetForm(
-  TextEditingController studentNameController,
-  TextEditingController rollNoController,
-  TextEditingController addressController,
-  TextEditingController classNameController,
-  TextEditingController fatherNameController,
-  TextEditingController fatherPhoneController,
-  TextEditingController motherNameController,
-  TextEditingController genderController,
-  TextEditingController cnicController,
-  WidgetRef ref,
-) {
-  // Clear all controllers
-  studentNameController.clear();
-  rollNoController.clear();
-  addressController.clear();
-  classNameController.clear();
-  fatherNameController.clear();
-  fatherPhoneController.clear();
-  motherNameController.clear();
-  genderController.clear();
-  cnicController.clear();
+//  void _resetForm(
+//   TextEditingController studentNameController,
+//   TextEditingController rollNoController,
+//   TextEditingController addressController,
+//   TextEditingController classNameController,
+//   TextEditingController fatherNameController,
+//   TextEditingController fatherPhoneController,
+//   TextEditingController motherNameController,
+//   TextEditingController genderController,
+//   TextEditingController cnicController,
+//   WidgetRef ref,
+// ) {
+//   // Clear all controllers
+//   studentNameController.clear();
+//   rollNoController.clear();
+//   addressController.clear();
+//   classNameController.clear();
+//   fatherNameController.clear();
+//   fatherPhoneController.clear();
+//   motherNameController.clear();
+//   genderController.clear();
+//   cnicController.clear();
 
-  // Reset any other state
-  _selectedImage = null; // Clear selected image
-  ref.read(selectedDateProvider.notifier).state = null; // Reset selected date
-}
+//   // Reset any other state
+//   _selectedImage = null; // Clear selected image
+//   ref.read(selectedDateProvider.notifier).state = null; // Reset selected date
+// }
 
-  @override
-  Widget build(BuildContext context) {
-    return Consumer(
-      builder: (context, ref, child) {
-        final studentNameController = ref.watch(studentNameControllerProvider);
-        final rollNoController = ref.watch(rollNoControllerProvider);
-        final addressController = ref.watch(addressControllerProvider);
-        final classNameController = ref.watch(classNameProvider);
-        final fatherNameController = ref.watch(fatherNameControllerProvider);
-        final fatherPhoneController = ref.watch(fatherPhoneControllerProvider);
-        final motherNameController = ref.watch(motherNameControllerProvider);
-        final genderController = ref.watch(genderControllerProvider);
-        final cnicController = ref.watch(cnicControllerProvider);
-        final selectedDate = ref.watch(selectedDateProvider);
+//   @override
+//   Widget build(BuildContext context) {
+//     return Consumer(
+//       builder: (context, ref, child) {
+//         final studentNameController = ref.watch(studentNameControllerProvider);
+//         final rollNoController = ref.watch(rollNoControllerProvider);
+//         final addressController = ref.watch(addressControllerProvider);
+//         final classNameController = ref.watch(classNameProvider);
+//         final fatherNameController = ref.watch(fatherNameControllerProvider);
+//         final fatherPhoneController = ref.watch(fatherPhoneControllerProvider);
+//         final motherNameController = ref.watch(motherNameControllerProvider);
+//         final genderController = ref.watch(genderControllerProvider);
+//         final cnicController = ref.watch(cnicControllerProvider);
+//         final selectedDate = ref.watch(selectedDateProvider);
 
-        if (widget.className.isNotEmpty) {
-          classNameController.text = widget.className;
-        }
-        return Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundImage: _selectedImage != null
-                        ? FileImage(_selectedImage!)
-                        : null,
-                    child: _selectedImage == null
-                        ? const Icon(Icons.camera_alt, size: 40)
-                        : null,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildTextFormField(
-                controller: studentNameController,
-                labelText: 'Enter Student Name',
-                validator: (value) =>
-                    _validateRequiredField(value, "student's name"),
-              ),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: rollNoController,
-                labelText: 'Enter Roll Number',
-                validator: (value) =>
-                    _validateRequiredField(value, 'roll number'),
-              ),
-              const SizedBox(height: 16),
-              _buildDatePicker(context, ref, selectedDate),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: classNameController,
-                labelText: "Class",
-                enabled: widget.className.isEmpty,
-                validator: (value) =>
-                    _validateRequiredField(value, 'class name'),
-              ),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: fatherNameController,
-                labelText: "Enter Father's Name",
-                validator: (value) =>
-                    _validateRequiredField(value, "father's name"),
-              ),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: fatherPhoneController,
-                labelText: "Enter Father's Phone Number",
-                keyboardType: TextInputType.phone,
-                validator: (value) => _validatePhone(value),
-              ),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: motherNameController,
-                labelText: "Enter Mother's Name",
-                validator: (value) =>
-                    _validateRequiredField(value, "mother's name"),
-              ),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: genderController,
-                labelText: 'Enter Gender',
-                validator: (value) => _validateRequiredField(value, 'gender'),
-              ),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: cnicController,
-                labelText: 'Enter CNIC Number',
-                keyboardType: TextInputType.number,
-                validator: (value) => _validateCNIC(value),
-              ),
-              const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: addressController,
-                labelText: 'Enter Address',
-                validator: (value) => _validateRequiredField(value, 'address'),
-              ),
-              const SizedBox(height: 24),
+//         if (widget.className.isNotEmpty) {
+//           classNameController.text = widget.className;
+//         }
+//         return Form(
+//           key: _formKey,
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               Center(
+//                 child: GestureDetector(
+//                   onTap: _pickImage,
+//                   child: CircleAvatar(
+//                     radius: 50,
+//                     backgroundImage: _selectedImage != null
+//                         ? FileImage(_selectedImage!)
+//                         : null,
+//                     child: _selectedImage == null
+//                         ? const Icon(Icons.camera_alt, size: 40)
+//                         : null,
+//                   ),
+//                 ),
+//               ),
+//               const SizedBox(height: 24),
+//               _buildTextFormField(
+//                 controller: studentNameController,
+//                 labelText: 'Enter Student Name',
+//                 validator: (value) =>
+//                     _validateRequiredField(value, "student's name"),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: rollNoController,
+//                 labelText: 'Enter Roll Number',
+//                 validator: (value) =>
+//                     _validateRequiredField(value, 'roll number'),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildDatePicker(context, ref, selectedDate),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: classNameController,
+//                 labelText: "Class",
+//                 enabled: widget.className.isEmpty,
+//                 validator: (value) =>
+//                     _validateRequiredField(value, 'class name'),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: fatherNameController,
+//                 labelText: "Enter Father's Name",
+//                 validator: (value) =>
+//                     _validateRequiredField(value, "father's name"),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: fatherPhoneController,
+//                 labelText: "Enter Father's Phone Number",
+//                 keyboardType: TextInputType.phone,
+//                 validator: (value) => _validatePhone(value),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: motherNameController,
+//                 labelText: "Enter Mother's Name",
+//                 validator: (value) =>
+//                     _validateRequiredField(value, "mother's name"),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: genderController,
+//                 labelText: 'Enter Gender',
+//                 validator: (value) => _validateRequiredField(value, 'gender'),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: cnicController,
+//                 labelText: 'Enter CNIC Number',
+//                 keyboardType: TextInputType.number,
+//                 validator: (value) => _validateCNIC(value),
+//               ),
+//               const SizedBox(height: 16),
+//               _buildTextFormField(
+//                 controller: addressController,
+//                 labelText: 'Enter Address',
+//                 validator: (value) => _validateRequiredField(value, 'address'),
+//               ),
+//               const SizedBox(height: 24),
 
-              // Submit Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                  ),
-                  onPressed: _isUploading
-                      ? null
-                      : () => _submitForm(
-                          studentNameController,
-                          rollNoController,
-                          addressController,
-                          classNameController,
-                          fatherNameController,
-                          fatherPhoneController,
-                          motherNameController,
-                          genderController,
-                          cnicController,
-                          selectedDate,
-                          ref),
-                  child: _isUploading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Submit',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+//               // Submit Button
+//               SizedBox(
+//                 width: double.infinity,
+//                 child: ElevatedButton(
+//                   style: ElevatedButton.styleFrom(
+//                     padding: const EdgeInsets.symmetric(vertical: 16.0),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(12.0),
+//                     ),
+//                   ),
+//                   onPressed: _isUploading
+//                       ? null
+//                       : () => _submitForm(
+//                           studentNameController,
+//                           rollNoController,
+//                           addressController,
+//                           classNameController,
+//                           fatherNameController,
+//                           fatherPhoneController,
+//                           motherNameController,
+//                           genderController,
+//                           cnicController,
+//                           selectedDate,
+//                           ref),
+//                   child: _isUploading
+//                       ? const CircularProgressIndicator(color: Colors.white)
+//                       : const Text(
+//                           'Submit',
+//                           style: TextStyle(fontSize: 18),
+//                         ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         );
+//       },
+//     );
+//   }
 
-  // Additional helper methods here (e.g., _buildTextFormField, _buildDatePicker, validation)
-}
+//   // Additional helper methods here (e.g., _buildTextFormField, _buildDatePicker, validation)
+// }
 
-Widget _buildTextFormField({
-  required TextEditingController controller,
-  required String labelText,
-  bool enabled = true,
-  TextInputType keyboardType = TextInputType.text,
-  required String? Function(String?) validator,
-}) {
-  return TextFormField(
-    controller: controller,
-    decoration: InputDecoration(
-      labelText: labelText,
-      enabled: enabled,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-    ),
-    validator: validator,
-    keyboardType: keyboardType,
-  );
-}
+// Widget _buildTextFormField({
+//   required TextEditingController controller,
+//   required String labelText,
+//   bool enabled = true,
+//   TextInputType keyboardType = TextInputType.text,
+//   required String? Function(String?) validator,
+// }) {
+//   return TextFormField(
+//     controller: controller,
+//     decoration: InputDecoration(
+//       labelText: labelText,
+//       enabled: enabled,
+//       border: OutlineInputBorder(
+//         borderRadius: BorderRadius.circular(12.0),
+//       ),
+//     ),
+//     validator: validator,
+//     keyboardType: keyboardType,
+//   );
+// }
 
-Widget _buildDatePicker(
-    BuildContext context, WidgetRef ref, DateTime? selectedDate) {
-  return GestureDetector(
-    onTap: () async {
-      final DateTime? pickedDate = await showDatePicker(
-        context: context,
-        initialDate: selectedDate ?? DateTime.now(),
-        firstDate: DateTime(1990),
-        lastDate: DateTime.now(),
-      );
-      if (pickedDate != null) {
-        ref.read(selectedDateProvider.notifier).state = pickedDate;
-      }
-    },
-    child: InputDecorator(
-      decoration: InputDecoration(
-        labelText: 'Select Date of Birth',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-      ),
-      child: Text(
-        selectedDate != null
-            ? DateFormat('yyyy-MM-dd').format(selectedDate)
-            : 'Please select a date',
-        style: const TextStyle(fontSize: 16),
-      ),
-    ),
-  );
-}
+// Widget _buildDatePicker(
+//     BuildContext context, WidgetRef ref, DateTime? selectedDate) {
+//   return GestureDetector(
+//     onTap: () async {
+//       final DateTime? pickedDate = await showDatePicker(
+//         context: context,
+//         initialDate: selectedDate ?? DateTime.now(),
+//         firstDate: DateTime(1990),
+//         lastDate: DateTime.now(),
+//       );
+//       if (pickedDate != null) {
+//         ref.read(selectedDateProvider.notifier).state = pickedDate;
+//       }
+//     },
+//     child: InputDecorator(
+//       decoration: InputDecoration(
+//         labelText: 'Select Date of Birth',
+//         border: OutlineInputBorder(
+//           borderRadius: BorderRadius.circular(12.0),
+//         ),
+//       ),
+//       child: Text(
+//         selectedDate != null
+//             ? DateFormat('yyyy-MM-dd').format(selectedDate)
+//             : 'Please select a date',
+//         style: const TextStyle(fontSize: 16),
+//       ),
+//     ),
+//   );
+// }
 
-// Validation functions
-String? _validateRequiredField(String? value, String fieldName) {
-  return (value == null || value.isEmpty)
-      ? 'Please enter the $fieldName'
-      : null;
-}
+// // Validation functions
+// String? _validateRequiredField(String? value, String fieldName) {
+//   return (value == null || value.isEmpty)
+//       ? 'Please enter the $fieldName'
+//       : null;
+// }
 
-String? _validatePhone(String? value) {
-  if (value == null || value.isEmpty) {
-    return 'Please enter the father\'s phone number';
-  } else if (!RegExp(r'^\d{11}$').hasMatch(value)) {
-    return 'Please enter a valid phone number';
-  }
-  return null;
-}
+// String? _validatePhone(String? value) {
+//   if (value == null || value.isEmpty) {
+//     return 'Please enter the father\'s phone number';
+//   } else if (!RegExp(r'^\d{11}$').hasMatch(value)) {
+//     return 'Please enter a valid phone number';
+//   }
+//   return null;
+// }
 
-String? _validateCNIC(String? value) {
-  if (value == null || value.isEmpty) {
-    return 'Please enter the CNIC number';
-  } else if (!RegExp(r'^\d{13}$').hasMatch(value)) {
-    return 'Please enter a valid CNIC number without dashes';
-  }
-  return null;
-}
+// String? _validateCNIC(String? value) {
+//   if (value == null || value.isEmpty) {
+//     return 'Please enter the CNIC number';
+//   } else if (!RegExp(r'^\d{13}$').hasMatch(value)) {
+//     return 'Please enter a valid CNIC number without dashes';
+//   }
+//   return null;
+// }

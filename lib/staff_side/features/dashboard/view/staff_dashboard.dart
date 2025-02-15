@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:school_management/admin_side/features/auth/controller/firebase_auth_notifier.dart';
-import 'package:school_management/admin_side/screens/add_student.dart';
+import 'package:school_management/admin_side/features/student_management/view/add_student.dart';
 import 'package:school_management/staff_side/components/staff_components.dart';
 import 'package:school_management/staff_side/features/dashboard/controller/staff_controller.dart';
 import 'package:school_management/staff_side/features/leave_management.dart/view/leave_management_page.dart';

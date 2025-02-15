@@ -7,7 +7,6 @@ import 'package:school_management/admin_side/screens/circular_progress_indicator
 import 'package:school_management/routes.dart';
 import 'package:school_management/admin_side/features/auth/views/login_screen.dart';
 import 'package:school_management/staff_side/features/dashboard/view/staff_dashboard.dart';
-import 'package:school_management/widgets/custom_loading_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
@@ -20,7 +19,7 @@ void main() async {
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplZmxraGhwZGtheG9uZXNhZ295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5NjA0MzUsImV4cCI6MjA0NjUzNjQzNX0.sCCWuoDi5cSntU4j59Oj5jEnfzpYJsnKlUatTaNn9b4',
     );
   } catch (e) {
-    print("Error initializing Supabase: $e");
+    debugPrint("Error initializing Supabase: $e");
   }
   runApp(
     const ProviderScope(child: MyApp()),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:school_management/models/student.dart';
+import 'package:school_management/admin_side/features/student_management/model/student.dart';
 
 class StudentTile extends StatefulWidget {
   final Student student;

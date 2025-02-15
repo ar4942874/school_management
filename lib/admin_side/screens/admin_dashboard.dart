@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:school_management/admin_side/features/auth/controller/firebase_auth_notifier.dart';
+import 'package:school_management/admin_side/features/student_management/view/student_page.dart';
 import 'package:school_management/admin_side/screens/staff_screen.dart';
-import 'package:school_management/admin_side/screens/student_display.dart';
 import '../features/staff_attandenace.dart/view/staff_attendance_list.dart';
 
 class AdminDashboard extends ConsumerWidget {
@@ -153,7 +153,7 @@ class AdminDashboard extends ConsumerWidget {
 
   Widget _buildAnimatedCard(
     BuildContext context, {
-    required String title,
+    required String title, 
     required IconData icon,
     required List<Color> gradientColors,
     required VoidCallback onTap,

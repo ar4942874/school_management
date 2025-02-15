@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:school_management/models/student.dart';
+import 'package:school_management/admin_side/features/student_management/model/student.dart';
 import 'package:intl/intl.dart';
 
 class AttendancePage extends StatefulWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:school_management/admin_side/features/student_management/view/add_student.dart';
 import 'package:school_management/admin_side/screens/add_staff.dart';
-import 'package:school_management/admin_side/screens/add_student.dart';
 import 'package:school_management/admin_side/screens/admin_dashboard.dart';
 import 'package:school_management/staff_side/features/leave_management.dart/view/leave_management_page.dart';
 import 'package:school_management/staff_side/features/staff_attendance_management/view/staff_attendance_view.dart';
